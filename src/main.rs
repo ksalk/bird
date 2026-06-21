@@ -40,7 +40,9 @@ fn main() {
             let all_dirs =
                 fs::read_dir(&eu4_base_dir).expect("Failed to list EU4 saved games folders.");
 
-            println!("Save game folder: {:?}", eu4_base_dir);
+            println!("Save games directory: {:?}", eu4_base_dir);
+            println!();
+            println!("Available save games folders:");
 
             for dir_entry in all_dirs {
                 let Ok(dir_entry) = dir_entry else {

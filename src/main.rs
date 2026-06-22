@@ -26,8 +26,8 @@ fn main() -> Result<(), BirdError> {
             let save_games = saves::list_save_folders()?;
 
             println!("Available save games folders:");
-            for save_game in save_games {
-                println!("{} - {}", save_game.name, save_game.path.display());
+            for (index, save_game) in save_games.iter().enumerate() {
+                println!("{:03} - {} - {}", index, save_game.name, save_game.path.display());
             }
 
             Ok(())

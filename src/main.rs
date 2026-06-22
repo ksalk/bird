@@ -64,9 +64,9 @@ fn main() -> Result<(), BirdError> {
                     ft.is_file() && entry.path().extension() == Some(OsStr::new(eu4_save_extension))
                 });
 
-                let dir_name = dir_path.file_name().ok_or(BirdError::InvalidUtf8InPath(dir_path.clone()))?;
+                let dir_name = dir_path.file_name().ok_or(BirdError::InvalidPath(dir_path.clone()))?;
                 if dir_contains_saves {
-                    let name = dir_name.to_str().ok_or(BirdError::InvalidUtf8InPath(dir_path.clone()))?;
+                    let name = dir_name.to_str().ok_or(BirdError::InvalidPath(dir_path.clone()))?;
                     println!("{}", name);
                 }
             }

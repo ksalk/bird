@@ -5,8 +5,8 @@ pub enum BirdError {
     #[error("could not find user directory")]
     UserDirNotFound,
 
-    #[error("path contains invalid UTF-8: {0:?}")]
-    InvalidUtf8InPath(std::path::PathBuf),
+    #[error("path is invalid: {0:?}")]
+    InvalidPath(std::path::PathBuf),
 
     #[error("I/O error: {0}")]
     IOError(#[from] std::io::Error),

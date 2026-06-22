@@ -45,8 +45,8 @@ pub fn list_save_folders() -> Result<Vec<SaveFolder>, BirdError> {
         });
         
         if dir_contains_saves {
-            let dir_name = dir_path.file_name().ok_or(BirdError::InvalidPath(dir_path.clone()))?;
-            let name = dir_name.to_str().ok_or(BirdError::InvalidPath(dir_path.clone()))?;
+            let dir_name = dir_path.file_name().ok_or_else(|| BirdError::InvalidPath(dir_path.clone()))?;
+            let name = dir_name.to_str().ok_or_else(|| BirdError::InvalidPath(dir_path.clone()))?;
             save_games_folders.push(SaveFolder {
                 name: name.to_string(),
                 path: dir_path

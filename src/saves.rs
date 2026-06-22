@@ -73,7 +73,7 @@ pub fn backup_saves() -> Result<Option<PathBuf>, BirdError> {
     let backup_dest_dir = eu4_base_dir.join(format!("save games {timestamp}"));
     fs::create_dir(backup_dest_dir.as_path())?;
     
-    let copy_options = fs_extra::dir::CopyOptions::new().overwrite(true);
+    let copy_options = fs_extra::dir::CopyOptions::new().overwrite(true).content_only(true);
     fs_extra::dir::copy(&current_savegames_dir, &backup_dest_dir, &copy_options)
         .map_err(|e| BirdError::BackupFailed(e.to_string()))?;
         

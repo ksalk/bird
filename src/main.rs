@@ -1,7 +1,7 @@
 mod error;
 mod saves;
 
-use clap::{Parser, Subcommand};
+use clap::{ArgGroup, Parser, Subcommand};
 use error::BirdError;
 
 /// Simple CLI tool to manage Europa Universalis IV save games
@@ -14,8 +14,21 @@ struct Cli {
 
 #[derive(Subcommand, Debug, Clone)]
 enum Commands {
+    /// List all save games folders
     List,
+    /// Backup current save games folder
     Backup,
+    /// Restore save games from a backed up folder
+    #[command(group = ArgGroup::new("restore_source").required(true))]
+    Restore {
+        #[arg(short, long, group = "restore_source")]
+        name: Option<String>,
+        #[arg(short, long, group = "restore_source")]
+        index: Option<usize>,
+        /// Backup the current save games folder before restoring
+        #[arg(short, long)]
+        backup: bool, // TODO: make this a --no-backup flag instead??
+    }
 }
 
 fn main() -> Result<(), BirdError> {
@@ -36,6 +49,33 @@ fn main() -> Result<(), BirdError> {
             match saves::backup_saves()? {
                 Some(backup) => println!("Backup created: {}", backup.display()),
                 None => println!("No save games found to backup")
+            }
+
+            Ok(())
+        },
+        Commands::Restore { name, index, backup } => {
+            println!("Restore command called with name: {:?}, index: {:?}, backup: {:?}", name, index, backup);
+
+            match name {
+                Some(value) => {
+                    let save_folder_by_path = saves::get_save_games_by_name(value)?;
+                    match save_folder_by_path {
+                        Some(save_folder) => saves::restore_save(save_folder, backup)?,
+                        _ => {}
+                    }                    
+                },
+                _ => {}
+            }
+            
+            match index {
+                Some(value) => {
+                    let save_folder_by_index = saves::get_save_games_by_index(value)?;
+                    match save_folder_by_index {
+                        Some(save_folder) => saves::restore_save(save_folder, backup)?,
+                        _ => {}
+                    }                    
+                },
+                _ => {}
             }
 
             Ok(())

@@ -6,7 +6,8 @@ use std::{ffi::OsStr, fs, path::PathBuf};
 #[derive(Clone)]
 pub struct SaveFolder {
     pub name: String,
-    pub path: PathBuf
+    pub path: PathBuf,
+    pub is_current: bool
 }
 
 const CURRENT_SAVEGAMES_DIR: &str = "save games";
@@ -51,11 +52,14 @@ pub fn list_save_folders() -> Result<Vec<SaveFolder>, BirdError> {
             let name = dir_name.to_str().ok_or_else(|| BirdError::InvalidPath(dir_path.clone()))?;
             save_games_folders.push(SaveFolder {
                 name: name.to_string(),
+                is_current: name == CURRENT_SAVEGAMES_DIR,
                 path: dir_path
             });
         }
     }
-    
+
+    save_games_folders.sort_by_key(|sf| sf.is_current);
+    save_games_folders.reverse();
     Ok(save_games_folders)
 }
 

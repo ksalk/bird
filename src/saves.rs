@@ -100,6 +100,11 @@ pub fn get_save_games_by_name(name: String) -> Result<SaveFolder, BirdError> {
 }
 
 pub fn restore_save(save_game: SaveFolder, backup: bool) -> Result<(), BirdError> {
+    // no need to restore if save games to restore are current
+    if save_game.name == CURRENT_SAVEGAMES_DIR {
+        return Ok(())
+    }
+
     if backup {
         backup_saves()?;
     }

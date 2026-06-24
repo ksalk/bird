@@ -112,6 +112,10 @@ pub fn restore_save(save_game: SaveFolder, backup: bool) -> Result<(), BirdError
     
     let current_savegames_dir_name = "save games";
     let current_savegames_dir = eu4_base_dir.join(current_savegames_dir_name);
+    if !current_savegames_dir.exists() {
+        fs::create_dir(current_savegames_dir_name)?;
+    }
+
     for entry in fs::read_dir(&current_savegames_dir)? {
         let entry = entry?;
         let path = entry.path();

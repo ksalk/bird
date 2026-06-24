@@ -81,22 +81,22 @@ pub fn backup_saves() -> Result<Option<PathBuf>, BirdError> {
     Ok(Some(backup_dest_dir))
 }
 
-pub fn get_save_games_by_index(index: usize) -> Result<Option<SaveFolder>, BirdError> {
+pub fn get_save_games_by_index(index: usize) -> Result<SaveFolder, BirdError> {
     let save_folders = list_save_folders()?;
 
-    let save_folder = save_folders.get(index)
-        .ok_or_else(|| BirdError::SaveFolderNotFound)?;
-    
-    Ok(Some(save_folder.clone()))
+    save_folders
+        .into_iter()
+        .nth(index)
+        .ok_or(BirdError::SaveFolderNotFound)
 }
 
-pub fn get_save_games_by_name(name: String) -> Result<Option<SaveFolder>, BirdError> {
+pub fn get_save_games_by_name(name: String) -> Result<SaveFolder, BirdError> {
     let save_folders = list_save_folders()?;
 
-    let save_folder = save_folders.iter().find(|sf| sf.name == name)
-        .ok_or_else(|| BirdError::SaveFolderNotFound)?;
-    
-    Ok(Some(save_folder.clone()))
+    save_folders
+        .into_iter()
+        .find(|sf| sf.name == name)
+        .ok_or(BirdError::SaveFolderNotFound)
 }
 
 pub fn restore_save(save_game: SaveFolder, backup: bool) -> Result<(), BirdError> {

@@ -56,27 +56,13 @@ fn main() -> Result<(), BirdError> {
         Commands::Restore { name, index, backup } => {
             println!("Restore command called with name: {:?}, index: {:?}, backup: {:?}", name, index, backup);
 
-            match name {
-                Some(value) => {
-                    let save_folder_by_path = saves::get_save_games_by_name(value)?;
-                    match save_folder_by_path {
-                        Some(save_folder) => saves::restore_save(save_folder, backup)?,
-                        _ => {}
-                    }                    
-                },
-                _ => {}
-            }
-            
-            match index {
-                Some(value) => {
-                    let save_folder_by_index = saves::get_save_games_by_index(value)?;
-                    match save_folder_by_index {
-                        Some(save_folder) => saves::restore_save(save_folder, backup)?,
-                        _ => {}
-                    }                    
-                },
-                _ => {}
-            }
+            let save_folder = match (name, index) {
+                (Some(name), _) => saves::get_save_games_by_name(name)?,
+                (_, Some(index)) => saves::get_save_games_by_index(index)?,
+                _ => unreachable!("restore requires either --name or --index")
+            };
+            saves::restore_save(save_folder, backup)?;
+            println!("Restore succeeded");
 
             Ok(())
         }

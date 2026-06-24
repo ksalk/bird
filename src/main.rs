@@ -38,9 +38,10 @@ fn main() -> Result<(), BirdError> {
         Commands::List => {
             let save_games = saves::list_save_folders()?;
 
-            println!("Available save games folders:");
+            println!("{:<8} {:<32} {:<50}", "Index", "Backup name", "Full backup path");
+            println!("{}", "-".repeat(90)); // Separator line
             for (index, save_game) in save_games.iter().enumerate() {
-                println!("{:03} - {} - {}", index, save_game.name, save_game.path.display());
+                println!("{:<8} {:<32} {:<50}", index + 1, save_game.name, save_game.path.display());
             }
 
             Ok(())

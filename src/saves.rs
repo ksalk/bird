@@ -9,6 +9,9 @@ pub struct SaveFolder {
     pub path: PathBuf
 }
 
+const CURRENT_SAVEGAMES_DIR: &str = "save games";
+const EU4_SAVE_EXTENSION: &str = "eu4";
+
 pub fn get_eu4_base_dir() -> Result<PathBuf, BirdError> {
     let base = if cfg!(target_os = "windows") {
         dirs::document_dir()
@@ -17,12 +20,10 @@ pub fn get_eu4_base_dir() -> Result<PathBuf, BirdError> {
     }
     .ok_or(BirdError::UserDirNotFound)?;
     
-    Ok(base.join("Paradox Interactive")
-    .join("Europa Universalis IV"))
+    Ok(base.join("Paradox Interactive").join("Europa Universalis IV"))
 }
 
 pub fn list_save_folders() -> Result<Vec<SaveFolder>, BirdError> {
-    let eu4_save_extension = "eu4";
     let eu4_base_dir = get_eu4_base_dir()?;
     if !eu4_base_dir.exists() {
         return Err(BirdError::DirNotFound(eu4_base_dir))
@@ -42,7 +43,7 @@ pub fn list_save_folders() -> Result<Vec<SaveFolder>, BirdError> {
         let dir_contains_saves = dir_files.any(|file| {
             let Ok(entry) = file else { return false; };
             let Ok(ft) = entry.file_type() else { return false; };
-            ft.is_file() && entry.path().extension() == Some(OsStr::new(eu4_save_extension))
+            ft.is_file() && entry.path().extension() == Some(OsStr::new(EU4_SAVE_EXTENSION))
         });
         
         if dir_contains_saves {
@@ -63,15 +64,14 @@ pub fn backup_saves() -> Result<Option<PathBuf>, BirdError> {
     if !eu4_base_dir.exists() {
         return Err(BirdError::DirNotFound(eu4_base_dir))
     }
-    
-    let current_savegames_dir_name = "save games";
-    let current_savegames_dir = eu4_base_dir.join(current_savegames_dir_name);
+
+    let current_savegames_dir = eu4_base_dir.join(CURRENT_SAVEGAMES_DIR);
     if !current_savegames_dir.exists() {
         return Ok(None);
     }
     
     let timestamp = chrono::Local::now().format("%Y-%m-%d-%H-%M-%S").to_string();
-    let backup_dest_dir = eu4_base_dir.join(format!("save games {timestamp}"));
+    let backup_dest_dir = eu4_base_dir.join(format!("{CURRENT_SAVEGAMES_DIR} {timestamp}"));
     fs::create_dir(backup_dest_dir.as_path())?;
     
     let copy_options = fs_extra::dir::CopyOptions::new().overwrite(true).copy_inside(true);
@@ -109,11 +109,10 @@ pub fn restore_save(save_game: SaveFolder, backup: bool) -> Result<(), BirdError
     if !eu4_base_dir.exists() {
         return Err(BirdError::DirNotFound(eu4_base_dir))
     }
-    
-    let current_savegames_dir_name = "save games";
-    let current_savegames_dir = eu4_base_dir.join(current_savegames_dir_name);
+
+    let current_savegames_dir = eu4_base_dir.join(CURRENT_SAVEGAMES_DIR);
     if !current_savegames_dir.exists() {
-        fs::create_dir(current_savegames_dir_name)?;
+        fs::create_dir(CURRENT_SAVEGAMES_DIR)?;
     }
 
     for entry in fs::read_dir(&current_savegames_dir)? {
@@ -130,8 +129,6 @@ pub fn restore_save(save_game: SaveFolder, backup: bool) -> Result<(), BirdError
     let copy_options = fs_extra::dir::CopyOptions::new().overwrite(true).copy_inside(true);
     fs_extra::dir::copy(&save_game.path, &current_savegames_dir, &copy_options)
         .map_err(|e| BirdError::RestoreFailed(e.to_string()))?;
-
-    println!("Restore succeeded");
 
     Ok(())
 }

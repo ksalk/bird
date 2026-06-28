@@ -1,7 +1,8 @@
 use crate::error;
 
 use error::BirdError;
-use std::{ffi::OsStr, fs, path::PathBuf};
+use eu4save::{EnvTokens, Eu4File, query::Query};
+use std::{ffi::OsStr, fs::{self}, path::PathBuf};
 
 #[derive(Clone)]
 pub struct SaveFolder {
@@ -22,6 +23,24 @@ pub fn get_eu4_base_dir() -> Result<PathBuf, BirdError> {
     .ok_or(BirdError::UserDirNotFound)?;
     
     Ok(base.join("Paradox Interactive").join("Europa Universalis IV"))
+}
+
+pub fn get_current_save_games() -> Result<Option<SaveFolder>, BirdError> {
+    let eu4_base_dir = get_eu4_base_dir()?;
+    if !eu4_base_dir.exists() {
+        return Err(BirdError::DirNotFound(eu4_base_dir))
+    }
+
+    let current_save_games_dir = eu4_base_dir.join(CURRENT_SAVEGAMES_DIR);
+    if !current_save_games_dir.exists() {
+        return Ok(None);
+    }
+
+   Ok(Some(SaveFolder {
+        is_current: true,
+        name: CURRENT_SAVEGAMES_DIR.to_string(),
+        path: current_save_games_dir
+    }))
 }
 
 pub fn list_save_folders() -> Result<Vec<SaveFolder>, BirdError> {
@@ -57,50 +76,56 @@ pub fn list_save_folders() -> Result<Vec<SaveFolder>, BirdError> {
             });
         }
     }
-
+    
     save_games_folders.sort_by_key(|sf| sf.is_current);
     save_games_folders.reverse();
     Ok(save_games_folders)
 }
 
-pub fn backup_saves() -> Result<Option<PathBuf>, BirdError> {
+pub fn backup_saves(name: Option<String>) -> Result<Option<PathBuf>, BirdError> {
     let eu4_base_dir = get_eu4_base_dir()?;
     if !eu4_base_dir.exists() {
         return Err(BirdError::DirNotFound(eu4_base_dir))
     }
-
+    
     let current_savegames_dir = eu4_base_dir.join(CURRENT_SAVEGAMES_DIR);
     if !current_savegames_dir.exists() {
         return Ok(None);
     }
     
-    let timestamp = chrono::Local::now().format("%Y-%m-%d-%H-%M-%S").to_string();
-    let backup_dest_dir = eu4_base_dir.join(format!("{CURRENT_SAVEGAMES_DIR} {timestamp}"));
+    let backup_dest_dir = match name {
+        Some(name) => eu4_base_dir.join(format!("{CURRENT_SAVEGAMES_DIR} - {name}")),
+        None => {
+            let timestamp = chrono::Local::now().format("%Y-%m-%d-%H-%M-%S").to_string();
+            eu4_base_dir.join(format!("{CURRENT_SAVEGAMES_DIR} - {timestamp}"))
+        }
+    };
+    
     fs::create_dir(backup_dest_dir.as_path())?;
     
     let copy_options = fs_extra::dir::CopyOptions::new().overwrite(true).copy_inside(true);
     fs_extra::dir::copy(&current_savegames_dir, &backup_dest_dir, &copy_options)
-        .map_err(|e| BirdError::BackupFailed(e.to_string()))?;
-        
+    .map_err(|e| BirdError::BackupFailed(e.to_string()))?;
+    
     Ok(Some(backup_dest_dir))
 }
 
 pub fn get_save_games_by_index(index: usize) -> Result<SaveFolder, BirdError> {
     let save_folders = list_save_folders()?;
-
+    
     save_folders
-        .into_iter()
-        .nth(index)
-        .ok_or(BirdError::SaveFolderNotFound)
+    .into_iter()
+    .nth(index)
+    .ok_or(BirdError::SaveFolderNotFound)
 }
 
 pub fn get_save_games_by_name(name: String) -> Result<SaveFolder, BirdError> {
     let save_folders = list_save_folders()?;
-
+    
     save_folders
-        .into_iter()
-        .find(|sf| sf.name == name)
-        .ok_or(BirdError::SaveFolderNotFound)
+    .into_iter()
+    .find(|sf| sf.name == name)
+    .ok_or(BirdError::SaveFolderNotFound)
 }
 
 pub fn restore_save(save_game: SaveFolder, backup: bool) -> Result<(), BirdError> {
@@ -108,22 +133,22 @@ pub fn restore_save(save_game: SaveFolder, backup: bool) -> Result<(), BirdError
     if save_game.name == CURRENT_SAVEGAMES_DIR {
         return Ok(())
     }
-
+    
     if backup {
-        backup_saves()?;
+        backup_saves(None)?;
     }
-
+    
     // clear current save games
     let eu4_base_dir = get_eu4_base_dir()?;
     if !eu4_base_dir.exists() {
         return Err(BirdError::DirNotFound(eu4_base_dir))
     }
-
+    
     let current_savegames_dir = eu4_base_dir.join(CURRENT_SAVEGAMES_DIR);
     if !current_savegames_dir.exists() {
         fs::create_dir(CURRENT_SAVEGAMES_DIR)?;
     }
-
+    
     for entry in fs::read_dir(&current_savegames_dir)? {
         let entry = entry?;
         let path = entry.path();
@@ -133,11 +158,47 @@ pub fn restore_save(save_game: SaveFolder, backup: bool) -> Result<(), BirdError
             fs::remove_file(&path)?;
         }
     }
-
+    
     // copy contents
     let copy_options = fs_extra::dir::CopyOptions::new().overwrite(true).copy_inside(true);
     fs_extra::dir::copy(&save_game.path, &current_savegames_dir, &copy_options)
-        .map_err(|e| BirdError::RestoreFailed(e.to_string()))?;
-
+    .map_err(|e| BirdError::RestoreFailed(e.to_string()))?;
+    
     Ok(())
 }
+
+pub fn get_save_files_in_folder(save_folder: SaveFolder) -> Result<Vec<PathBuf>, BirdError> {
+    let dir_files = save_folder.path.read_dir()?;
+    
+    let save_files: Vec<PathBuf> = dir_files
+        .filter_map(|file| {
+            let entry = file.ok()?;
+            let ft = entry.file_type().ok()?;
+            (ft.is_file() && entry.path().extension() == Some(OsStr::new(EU4_SAVE_EXTENSION)))
+                .then_some(entry.path())
+        })
+        .collect();
+    
+    Ok(save_files)
+}
+
+pub fn read_save_data(save_folder: SaveFolder) -> Result<(), BirdError> {
+    let save_files = get_save_files_in_folder(save_folder)?;
+
+    for save_file in save_files {
+        let data = std::fs::read(save_file)?;
+        println!("Got file data");
+        let file = Eu4File::from_slice(&data).map_err(|_e| BirdError::SavaGameDataReadFailed)?;
+        println!("Got eu4 file");
+        let save = file.deserializer().build_save(&EnvTokens).map_err(|_e| BirdError::SavaGameDataReadFailed)?;
+        println!("Got save data");
+        let players = Query::from_save(save).players();
+        println!("Got players data");
+
+        for player in players {
+            println!("{} {}", player.name, player.tag.as_str());
+        }
+    }
+    
+    Ok(())
+}  

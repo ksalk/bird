@@ -17,7 +17,11 @@ enum Commands {
     /// List all save games folders
     List,
     /// Backup current save games folder
-    Backup,
+    Backup {
+        name: Option<String>
+    },
+    /// Get info about current save game
+    Current,
     /// Restore save games from a backed up folder
     #[command(group = ArgGroup::new("restore_source").required(true))]
     Restore {
@@ -46,13 +50,21 @@ fn main() -> Result<(), BirdError> {
 
             Ok(())
         }
-        Commands::Backup => {
-            match saves::backup_saves()? {
+        Commands::Backup { name} => {
+            match saves::backup_saves(name)? {
                 Some(backup) => println!("Backup created: {}", backup.display()),
                 None => println!("No save games found to backup")
             }
 
             Ok(())
+        },
+        Commands::Current => {
+            let current_save_games = saves::get_current_save_games()?;
+
+            match current_save_games {
+                Some(save) => saves::read_save_data(save),
+                None => Ok(())
+            }
         },
         Commands::Restore { name, index, backup } => {
             println!("Restore command called with name: {:?}, index: {:?}, backup: {:?}", name, index, backup);

@@ -100,6 +100,10 @@ pub fn backup_saves(name: Option<String>) -> Result<Option<PathBuf>, BirdError> 
             eu4_base_dir.join(format!("{CURRENT_SAVEGAMES_DIR} - {timestamp}"))
         }
     };
+
+    if backup_dest_dir.exists() {
+        return Err(BirdError::BackupFailed(format!("'{}' directory already exists", backup_dest_dir.display())))
+    }
     
     fs::create_dir(backup_dest_dir.as_path())?;
     

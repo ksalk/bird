@@ -82,6 +82,8 @@ dependencies = [
  "dirs",
  "eu4save",
  "fs_extra",
+ "serde",
+ "serde_json",
  "thiserror 2.0.18",
 ]
 

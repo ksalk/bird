@@ -1,7 +1,8 @@
 use crate::error;
 
 use error::BirdError;
-use eu4save::{EnvTokens, Eu4File, query::Query};
+use serde::Deserialize;
+
 use std::{ffi::OsStr, fs::{self}, path::PathBuf, process::Command};
 
 #[derive(Clone)]
@@ -186,50 +187,46 @@ pub fn get_save_files_in_folder(save_folder: SaveFolder) -> Result<Vec<PathBuf>,
     Ok(save_files)
 }
 
+#[derive(Deserialize, Debug)]
+struct Eu4Version {
+    first: u8,
+    second: u8,
+    third: u8
+}
+
+#[derive(Deserialize, Debug)]
+struct Eu4Save {
+    date: String,
+    displayed_country_name: String,
+    savegame_version: Eu4Version,
+    is_ironman: bool,
+    campaign_id: String
+}
+
 pub fn read_save_data(save_folder: SaveFolder) -> Result<(), BirdError> {
     let save_files = get_save_files_in_folder(save_folder)?;
 
-    for save_file in save_files {
-        let data = std::fs::read(&save_file)?;
-        let melted_file_data : Vec<u8>;
-        println!("Got file {} data", save_file.display());
-        let mut file = Eu4File::from_slice(&data).map_err(|e| { eprintln!("from_slice error: {}", e); BirdError::SavaGameDataReadFailed })?;
-        println!("Got eu4 file");
-        let save_encoding = file.encoding();
+    for save_file in save_files {       
+        let file_path = save_file.to_str();
+        println!("Reading file: {}", save_file.display());
 
-        println!("{}", save_encoding.as_str());
-        match save_encoding {
-            eu4save::Encoding::Binary | eu4save::Encoding::BinaryZip => {
-                let file_path = save_file.to_str();
-                match file_path {
-                    Some(path) => {
-                        let command = Command::new("rakaly")
-                            .arg("melt")
-                            .arg("-c")
-                            .arg(path)
-                            .output()
-                            .expect("failed to execute process");
+        match file_path {
+            Some(path) => {
+                // TODO: use rakaly json and read props, save to .bird.save
+                let command = Command::new("rakaly")
+                    .arg("json")
+                    .arg(path)
+                    .output()
+                    .expect("failed to execute process");
 
-                        melted_file_data = command.stdout;
-                        println!("Got melted file data with count {}", melted_file_data.iter().count());
-                        //let output = String::from_utf8_lossy(&melted_file_data);
-                        //println!("{}", output);
-                        file = Eu4File::from_slice(&melted_file_data).map_err(|e| { eprintln!("from_slice error: {}", e); BirdError::SavaGameDataReadFailed })?;
-                    },
-                    _ => {}
-                }
+                let melted_file_data = command.stdout;
+                //println!("Got melted file data with count {}", melted_file_data.iter().count());
+                let json: Eu4Save = serde_json::from_slice(&melted_file_data).map_err(|e| { eprintln!("json slice error: {}", e);BirdError::SavaGameDataReadFailed } )?;
+
+                println!("success: player country: {}, date: {}, version {}.{}.{}", json.displayed_country_name, json.date, json.savegame_version.first, json.savegame_version.second, json.savegame_version.third);
+                println!("success: ironman: {}, campaign_id: {}", json.is_ironman, json.campaign_id);
             },
             _ => {}
-        }
-
-        println!("got eu4 file after");
-        let save = file.deserializer().build_save(&EnvTokens).map_err(|e| { eprintln!("build_save error: {}", e); BirdError::SavaGameDataReadFailed })?;
-        println!("Got save data");
-        let players = Query::from_save(save).players();
-        println!("Got players data");
-
-        for player in players {
-            println!("{} {}", player.name, player.tag.as_str());
         }
     }
     

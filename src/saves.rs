@@ -1,7 +1,7 @@
 use crate::error;
 
 use error::BirdError;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use std::{ffi::OsStr, fs::{self}, path::PathBuf, process::Command};
 
@@ -187,14 +187,14 @@ pub fn get_save_files_in_folder(save_folder: SaveFolder) -> Result<Vec<PathBuf>,
     Ok(save_files)
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 struct Eu4Version {
     first: u8,
     second: u8,
     third: u8
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 struct Eu4Save {
     date: String,
     displayed_country_name: String,
@@ -206,7 +206,11 @@ struct Eu4Save {
 pub fn read_save_data(save_folder: SaveFolder) -> Result<(), BirdError> {
     let save_files = get_save_files_in_folder(save_folder)?;
 
-    for save_file in save_files {       
+    for save_file in save_files {
+        if save_file.extension() != Some(OsStr::new(EU4_SAVE_EXTENSION)) {
+            continue;
+        }
+
         let file_path = save_file.to_str();
         println!("Reading file: {}", save_file.display());
 
@@ -219,12 +223,12 @@ pub fn read_save_data(save_folder: SaveFolder) -> Result<(), BirdError> {
                     .output()
                     .expect("failed to execute process");
 
-                let melted_file_data = command.stdout;
-                //println!("Got melted file data with count {}", melted_file_data.iter().count());
-                let json: Eu4Save = serde_json::from_slice(&melted_file_data).map_err(|e| { eprintln!("json slice error: {}", e);BirdError::SavaGameDataReadFailed } )?;
+                let json: Eu4Save = serde_json::from_slice(&command.stdout)
+                    .map_err(|e| { eprintln!("json slice error: {}", e);BirdError::SavaGameDataReadFailed } )?;
 
                 println!("success: player country: {}, date: {}, version {}.{}.{}", json.displayed_country_name, json.date, json.savegame_version.first, json.savegame_version.second, json.savegame_version.third);
                 println!("success: ironman: {}, campaign_id: {}", json.is_ironman, json.campaign_id);
+                println!();
             },
             _ => {}
         }

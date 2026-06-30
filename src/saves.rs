@@ -2,7 +2,7 @@ use crate::error;
 
 use error::BirdError;
 use eu4save::{EnvTokens, Eu4File, query::Query};
-use std::{ffi::OsStr, fs::{self}, path::PathBuf};
+use std::{ffi::OsStr, fs::{self}, path::PathBuf, process::Command};
 
 #[derive(Clone)]
 pub struct SaveFolder {
@@ -190,11 +190,40 @@ pub fn read_save_data(save_folder: SaveFolder) -> Result<(), BirdError> {
     let save_files = get_save_files_in_folder(save_folder)?;
 
     for save_file in save_files {
-        let data = std::fs::read(save_file)?;
-        println!("Got file data");
-        let file = Eu4File::from_slice(&data).map_err(|_e| BirdError::SavaGameDataReadFailed)?;
+        let data = std::fs::read(&save_file)?;
+        let melted_file_data : Vec<u8>;
+        println!("Got file {} data", save_file.display());
+        let mut file = Eu4File::from_slice(&data).map_err(|e| { eprintln!("from_slice error: {}", e); BirdError::SavaGameDataReadFailed })?;
         println!("Got eu4 file");
-        let save = file.deserializer().build_save(&EnvTokens).map_err(|_e| BirdError::SavaGameDataReadFailed)?;
+        let save_encoding = file.encoding();
+
+        println!("{}", save_encoding.as_str());
+        match save_encoding {
+            eu4save::Encoding::Binary | eu4save::Encoding::BinaryZip => {
+                let file_path = save_file.to_str();
+                match file_path {
+                    Some(path) => {
+                        let command = Command::new("rakaly")
+                            .arg("melt")
+                            .arg("-c")
+                            .arg(path)
+                            .output()
+                            .expect("failed to execute process");
+
+                        melted_file_data = command.stdout;
+                        println!("Got melted file data with count {}", melted_file_data.iter().count());
+                        //let output = String::from_utf8_lossy(&melted_file_data);
+                        //println!("{}", output);
+                        file = Eu4File::from_slice(&melted_file_data).map_err(|e| { eprintln!("from_slice error: {}", e); BirdError::SavaGameDataReadFailed })?;
+                    },
+                    _ => {}
+                }
+            },
+            _ => {}
+        }
+
+        println!("got eu4 file after");
+        let save = file.deserializer().build_save(&EnvTokens).map_err(|e| { eprintln!("build_save error: {}", e); BirdError::SavaGameDataReadFailed })?;
         println!("Got save data");
         let players = Query::from_save(save).players();
         println!("Got players data");

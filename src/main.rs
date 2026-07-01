@@ -51,7 +51,7 @@ fn main() -> Result<(), BirdError> {
             Ok(())
         }
         Commands::Backup { name} => {
-            match saves::backup_saves(name)? {
+            match saves::backup_save_folder(name)? {
                 Some(backup) => println!("Backup created: {}", backup.display()),
                 None => println!("No save games found to backup")
             }
@@ -59,7 +59,7 @@ fn main() -> Result<(), BirdError> {
             Ok(())
         },
         Commands::Current => {
-            let current_save_games = saves::get_current_save_games()?;
+            let current_save_games = saves::get_current_save_folder()?;
 
             match current_save_games {
                 Some(save) => saves::read_save_data(save),
@@ -70,11 +70,11 @@ fn main() -> Result<(), BirdError> {
             println!("Restore command called with name: {:?}, index: {:?}, backup: {:?}", name, index, backup);
 
             let save_folder = match (name, index) {
-                (Some(name), _) => saves::get_save_games_by_name(name)?,
-                (_, Some(index)) => saves::get_save_games_by_index(index)?,
+                (Some(name), _) => saves::get_save_folder_by_name(name)?,
+                (_, Some(index)) => saves::get_save_folder_by_index(index)?,
                 _ => unreachable!("restore requires either --name or --index")
             };
-            saves::restore_save(save_folder, backup)?;
+            saves::restore_save_folder(save_folder, backup)?;
             println!("Restore succeeded");
 
             Ok(())

@@ -23,9 +23,6 @@ pub enum BirdError {
     #[error("Save folder not found")]
     SaveFolderNotFound,
 
-    #[error("Reading save game data failed")]
-    SavaGameDataReadFailed,
-
     #[error("Cannot read file")]
     ReadFileFailed
 }

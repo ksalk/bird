@@ -241,11 +241,12 @@ pub fn read_save_data(save_folder: SaveFolder) -> Result<(), BirdError> {
                     .output()
                     .expect("failed to execute process");
 
-                let json: Eu4Save = serde_json::from_slice(&command.stdout)
-                    .map_err(|e| { eprintln!("json slice error: {}", e);BirdError::SavaGameDataReadFailed } )?;
+                let Ok(save_json): Result<Eu4Save, serde_json::Error> = serde_json::from_slice(&command.stdout) else {
+                     eprintln!("Error reading save file: {}", path);
+                     continue; };
 
-                println!("success: player country: {}, date: {}, version {}.{}.{}", json.displayed_country_name, json.date, json.savegame_version.first, json.savegame_version.second, json.savegame_version.third);
-                println!("success: ironman: {}, campaign_id: {}", json.is_ironman, json.campaign_id);
+                println!("success: player country: {}, date: {}, version {}.{}.{}", save_json.displayed_country_name, save_json.date, save_json.savegame_version.first, save_json.savegame_version.second, save_json.savegame_version.third);
+                println!("success: ironman: {}, campaign_id: {}", save_json.is_ironman, save_json.campaign_id);
                 println!();
 
                 let file_metadata = fs::metadata(&save_file).map_err(|_e| BirdError::ReadFileFailed)?;
@@ -253,7 +254,7 @@ pub fn read_save_data(save_folder: SaveFolder) -> Result<(), BirdError> {
                 let metadata = Eu4SaveMetadata {
                     file_size: file_metadata.size(),
                     modified_at: file_modified_at,
-                    save_data: json
+                    save_data: save_json
                 };
 
                 write_save_file_metadata(save_file, metadata)?
@@ -268,10 +269,9 @@ pub fn read_save_data(save_folder: SaveFolder) -> Result<(), BirdError> {
 fn get_save_file_metadata(save_file: &PathBuf) -> Result<Option<Eu4SaveMetadata>, BirdError> {
     let metadata_prefix = ".bird.";
     let Some(parent_dir) = save_file.parent() else { return Err(BirdError::InvalidPath(save_file.to_path_buf())) };
-    let Some(file_name) = save_file.file_name() else { return Err(BirdError::InvalidPath(save_file.to_path_buf())) };
-    let Some(file_name_str) = file_name.to_str() else { return Err(BirdError::InvalidPath(save_file.to_path_buf())) };
+    let Some(file_name) = save_file.file_stem().and_then(|s| s.to_str()) else { return Err(BirdError::InvalidPath(save_file.to_path_buf())) };
     
-    let metadata_file_name = &format!("{}{}", metadata_prefix, file_name_str);
+    let metadata_file_name = &format!("{}{}", metadata_prefix, file_name);
     let save_metadata_file = parent_dir.join(Path::new(metadata_file_name));
 
     if save_metadata_file.exists() {
@@ -294,10 +294,9 @@ fn get_save_file_metadata(save_file: &PathBuf) -> Result<Option<Eu4SaveMetadata>
 fn write_save_file_metadata(save_file: PathBuf, metadata: Eu4SaveMetadata) -> Result<(), BirdError> {
     let metadata_prefix = ".bird.";
     let Some(parent_dir) = save_file.parent() else { return Err(BirdError::InvalidPath(save_file)) };
-    let Some(file_name) = save_file.file_name() else { return Err(BirdError::InvalidPath(save_file)) };
-    let Some(file_name_str) = file_name.to_str() else { return Err(BirdError::InvalidPath(save_file)) };
+    let Some(file_name) = save_file.file_stem().and_then(|s| s.to_str()) else { return Err(BirdError::InvalidPath(save_file.to_path_buf())) };
     
-    let metadata_file_name = &format!("{}{}", metadata_prefix, file_name_str);
+    let metadata_file_name = &format!("{}{}", metadata_prefix, file_name);
     let save_metadata_file = parent_dir.join(Path::new(metadata_file_name));
 
     let file = File::create(save_metadata_file)?;

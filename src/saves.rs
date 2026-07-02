@@ -221,9 +221,7 @@ pub fn read_save_data(save_folder: SaveFolder) -> Result<(), BirdError> {
         let save_metadata_file = get_save_file_metadata(&save_file)?;
         match save_metadata_file {
             Some(save_metadata_file) => {
-                println!("success: player country: {}, date: {}, version {}.{}.{}", save_metadata_file.save_data.displayed_country_name, save_metadata_file.save_data.date, save_metadata_file.save_data.savegame_version.first, save_metadata_file.save_data.savegame_version.second, save_metadata_file.save_data.savegame_version.third);
-                println!("success: ironman: {}, campaign_id: {}", save_metadata_file.save_data.is_ironman, save_metadata_file.save_data.campaign_id);
-                println!();
+                print_save_file_metadata(&save_metadata_file.save_data);
                 continue;
             },
             _ => {}
@@ -245,9 +243,7 @@ pub fn read_save_data(save_folder: SaveFolder) -> Result<(), BirdError> {
                      eprintln!("Error reading save file: {}", path);
                      continue; };
 
-                println!("success: player country: {}, date: {}, version {}.{}.{}", save_json.displayed_country_name, save_json.date, save_json.savegame_version.first, save_json.savegame_version.second, save_json.savegame_version.third);
-                println!("success: ironman: {}, campaign_id: {}", save_json.is_ironman, save_json.campaign_id);
-                println!();
+                print_save_file_metadata(&save_json);
 
                 let file_metadata = fs::metadata(&save_file).map_err(|_e| BirdError::ReadFileFailed)?;
                 let file_modified_at = file_metadata.modified().map_err(|_e| BirdError::ReadFileFailed)?;
@@ -264,6 +260,12 @@ pub fn read_save_data(save_folder: SaveFolder) -> Result<(), BirdError> {
     }
     
     Ok(())
+}
+
+fn print_save_file_metadata(metadata: &Eu4Save) {
+    println!("Player country: {}, date: {}, version {}.{}.{}", metadata.displayed_country_name, metadata.date, metadata.savegame_version.first, metadata.savegame_version.second, metadata.savegame_version.third);
+    println!("Ironman: {}, campaign_id: {}", metadata.is_ironman, metadata.campaign_id);
+    println!();
 }
 
 fn get_save_file_metadata(save_file: &PathBuf) -> Result<Option<Eu4SaveMetadata>, BirdError> {

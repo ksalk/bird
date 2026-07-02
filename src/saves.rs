@@ -265,7 +265,7 @@ pub fn read_save_data(save_folder: SaveFolder) -> Result<(), BirdError> {
     Ok(())
 }
 
-pub fn get_save_file_metadata(save_file: &PathBuf) -> Result<Option<Eu4SaveMetadata>, BirdError> {
+fn get_save_file_metadata(save_file: &PathBuf) -> Result<Option<Eu4SaveMetadata>, BirdError> {
     let metadata_prefix = ".bird.";
     let Some(parent_dir) = save_file.parent() else { return Err(BirdError::InvalidPath(save_file.to_path_buf())) };
     let Some(file_name) = save_file.file_name() else { return Err(BirdError::InvalidPath(save_file.to_path_buf())) };
@@ -291,7 +291,7 @@ pub fn get_save_file_metadata(save_file: &PathBuf) -> Result<Option<Eu4SaveMetad
     Ok(None)
 }
 
-pub fn write_save_file_metadata(save_file: PathBuf, metadata: Eu4SaveMetadata) -> Result<(), BirdError> {
+fn write_save_file_metadata(save_file: PathBuf, metadata: Eu4SaveMetadata) -> Result<(), BirdError> {
     let metadata_prefix = ".bird.";
     let Some(parent_dir) = save_file.parent() else { return Err(BirdError::InvalidPath(save_file)) };
     let Some(file_name) = save_file.file_name() else { return Err(BirdError::InvalidPath(save_file)) };
@@ -302,7 +302,7 @@ pub fn write_save_file_metadata(save_file: PathBuf, metadata: Eu4SaveMetadata) -
 
     let file = File::create(save_metadata_file)?;
     let writer = BufWriter::new(file);
-    serde_json::to_writer_pretty(writer, &metadata).map_err(|e| BirdError::ReadFileFailed)?;
+    serde_json::to_writer_pretty(writer, &metadata).map_err(|_| BirdError::ReadFileFailed)?;
     
     Ok(())
 }
